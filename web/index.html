@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>自动视频脚本工作台</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- 背景：橙色渐变 + 模糊光斑 -->
+  <div class="bg">
+    <span class="blob blob-1"></span>
+    <span class="blob blob-2"></span>
+    <span class="blob blob-3"></span>
+  </div>
+
+  <div class="app">
+    <!-- 顶栏 -->
+    <header class="topbar glass">
+      <div class="brand">
+        <div class="logo">🎬</div>
+        <div>
+          <h1>自动视频脚本工作台</h1>
+          <p class="subtitle">把网址或长文本，变成分集短视频脚本与分镜提示词</p>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <button id="statusPill" class="pill" title="点击进行 API 设置">
+          <span class="dot"></span><span id="statusText">检测中…</span>
+        </button>
+        <button id="settingsBtn" class="icon-btn" title="设置">⚙︎</button>
+      </div>
+    </header>
+
+    <main class="grid">
+      <!-- 输入卡片 -->
+      <section class="card glass span-2">
+        <div class="card-head">
+          <h2>素材输入</h2>
+          <div class="segmented" id="modeSeg">
+            <button class="seg-btn active" data-mode="text">粘贴文本/小说</button>
+            <button class="seg-btn" data-mode="url">网址</button>
+          </div>
+        </div>
+        <textarea id="input" placeholder="在这里粘贴长文本/小说，或切换到「网址」模式输入链接…"></textarea>
+        <div class="input-foot">
+          <span id="charCount" class="muted">0 字</span>
+          <div class="row-gap">
+            <button id="fetchBtn" class="ghost-btn hidden">抓取网址正文预览</button>
+            <button id="importBtn" class="ghost-btn">导入 txt 文件</button>
+          </div>
+        </div>
+
+        <div class="options">
+          <label>单集时长
+            <div class="num"><input id="seconds" type="number" min="10" max="600" value="60" /><span>秒</span></div>
+          </label>
+          <label>期望集数
+            <div class="num"><input id="count" type="number" min="0" max="50" value="0" placeholder="自动" /><span>集</span></div>
+          </label>
+          <span class="muted tip">集数填 0 表示自动按内容长度拆分</span>
+        </div>
+
+        <div class="steps">
+          <div class="step">
+            <button id="step1" class="primary-btn">1 · 编排故事</button>
+            <span id="status1" class="step-status">未开始</span>
+          </div>
+          <div class="step">
+            <button id="step2" class="primary-btn" disabled>2 · 生成多个脚本</button>
+            <span id="status2" class="step-status">未开始</span>
+          </div>
+          <div class="step">
+            <button id="step3" class="primary-btn" disabled>3 · 执行选中脚本</button>
+            <span id="status3" class="step-status">未开始</span>
+          </div>
+        </div>
+
+        <div class="project-bar">
+          <span id="projectPath" class="muted">尚未创建项目</span>
+          <button id="openFolderBtn" class="ghost-btn" disabled>打开输出文件夹</button>
+        </div>
+      </section>
+
+      <!-- 故事结果 -->
+      <section class="card glass">
+        <div class="card-head"><h2>故事结果</h2></div>
+        <div id="storyResult" class="result-body empty">完成「编排故事」后在这里显示标题、梗概、人物与风格。</div>
+      </section>
+
+      <!-- 脚本列表 -->
+      <section class="card glass">
+        <div class="card-head">
+          <h2>脚本标题列表</h2>
+          <span id="scriptCount" class="badge hidden">0</span>
+        </div>
+        <ul id="scriptList" class="script-list empty">
+          <li class="placeholder">完成「生成脚本」后在这里列出每一集。</li>
+        </ul>
+      </section>
+
+      <!-- 选中脚本详情 -->
+      <section class="card glass span-2">
+        <div class="card-head"><h2>选中脚本详情</h2></div>
+        <div id="scriptDetail" class="result-body empty">在上方列表选择一集，这里显示旁白脚本与镜头提示词。</div>
+      </section>
+    </main>
+  </div>
+
+  <!-- 设置弹窗 -->
+  <div id="settingsModal" class="modal-mask hidden">
+    <div class="modal glass">
+      <div class="card-head">
+        <h2>API 设置</h2>
+        <button id="closeSettings" class="icon-btn">✕</button>
+      </div>
+      <p class="muted">填写后保存即生效（OpenAI Chat Completions 兼容）。留空则使用本地规则生成。</p>
+      <label class="field">接口地址
+        <input id="cfgUrl" type="text" placeholder="https://你的接口地址/v1/chat/completions" />
+      </label>
+      <label class="field">API Key
+        <input id="cfgKey" type="password" placeholder="留空表示沿用已保存的 Key" />
+      </label>
+      <div class="field-row">
+        <label class="field">模型名
+          <input id="cfgModel" type="text" placeholder="例如 gpt-4.1" />
+        </label>
+        <label class="field small">temperature
+          <input id="cfgTemp" type="number" min="0" max="2" step="0.1" value="0.7" />
+        </label>
+      </div>
+      <div class="modal-foot">
+        <button id="cancelSettings" class="ghost-btn">取消</button>
+        <button id="saveSettings" class="primary-btn">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
