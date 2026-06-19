@@ -85,20 +85,37 @@ class VideoProducer:
         work = out_dir / f"_work_{item.index:03d}"
         work.mkdir(parents=True, exist_ok=True)
 
-        prev_frame = None
+        # 项目级一致性资产库（跨集复用，已存在则不重复生成）
+        char_refs, scene_refs, generic_ref = {}, {}, None
         if self.consistency == "strong":
-            prev_frame = self._ensure_reference(story, out_dir)
+            char_refs = self._ensure_character_refs(story, out_dir)
+            scene_refs = self._ensure_scene_refs(story, out_dir)
+            if not char_refs and not scene_refs:
+                generic_ref = self._ensure_reference(story, out_dir)
 
         prefix = self._consistency_prefix(story)
         normalized, segments = [], []
+        prev_frame, prev_speaker, prev_location = None, None, None
 
         for i, shot in enumerate(item.shots, 1):
             n = len(item.shots)
             duration = max(1, min(GROK_MAX_DURATION, int(shot.get("duration", 6))))
+            speaker = shot.get("speaker", "")
+            location = shot.get("location", "")
 
             self.progress(f"镜头 {i}/{n}：生成视频…")
             prompt = f"{prefix} 本镜画面：{shot.get('visual_prompt', '')}"
-            image_bytes = prev_frame.read_bytes() if (prev_frame and prev_frame.exists()) else None
+
+            anchor = None
+            if self.consistency == "strong":
+                new_turn = (speaker != prev_speaker) or (location != prev_location) or (prev_frame is None)
+                if new_turn:
+                    # 换说话人/换场景：用该角色定妆图(或场景图)重新锚定身份，防止跨镜跨集漂移
+                    anchor = char_refs.get(speaker) or scene_refs.get(location) or generic_ref
+                if anchor is None:
+                    anchor = prev_frame  # 同一人同场景内：用上一镜尾帧做连续衔接
+            image_bytes = anchor.read_bytes() if (anchor and anchor.exists()) else None
+
             clip_bytes = self.grok.generate_video(
                 prompt, image_bytes, duration, self.aspect, self.resolution
             )
@@ -123,6 +140,7 @@ class VideoProducer:
                 frame = work / f"frame_{i:03d}.png"
                 if self._extract_last_frame(norm, frame):
                     prev_frame = frame
+            prev_speaker, prev_location = speaker, location
 
         # 字幕
         srt_path = out_dir / "videos" / f"{item.index:03d}_{safe_name(item.title)}.srt"
@@ -145,6 +163,52 @@ class VideoProducer:
             ref.parent.mkdir(parents=True, exist_ok=True)
             ref.write_bytes(self.grok.generate_image(self._reference_prompt(story)))
         return ref
+
+    def _ensure_character_refs(self, story: dict, out_dir: Path) -> dict:
+        """为每个角色生成/复用一张定妆参考图，返回 {角色名: 图片路径}。"""
+        refs = {}
+        cast = story.get("cast") or []
+        char_dir = out_dir / "assets" / "characters"
+        for c in cast:
+            name = (c.get("name") or "").strip()
+            if not name:
+                continue
+            path = char_dir / f"{safe_name(name)}.png"
+            if not path.exists():
+                self.progress(f"生成角色定妆图：{name}…")
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(self.grok.generate_image(self._character_prompt(c, story)))
+            refs[name] = path
+        return refs
+
+    def _ensure_scene_refs(self, story: dict, out_dir: Path) -> dict:
+        """为每个场景生成/复用一张参考图，返回 {场景名: 图片路径}。"""
+        refs = {}
+        scene_dir = out_dir / "assets" / "scenes"
+        for loc in story.get("locations") or []:
+            name = (loc.get("name") or "").strip()
+            if not name:
+                continue
+            path = scene_dir / f"{safe_name(name)}.png"
+            if not path.exists():
+                self.progress(f"生成场景参考图：{name}…")
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(self.grok.generate_image(self._scene_prompt(loc, story)))
+            refs[name] = path
+        return refs
+
+    def _character_prompt(self, c: dict, story: dict) -> str:
+        return (
+            f"角色定妆参考图。角色：{c.get('name', '')}。外貌穿着：{c.get('appearance', '')}。"
+            f"身份性格：{c.get('persona', '')}。整体画风：{story.get('style', '')}。"
+            "要求：单人、五官清晰、半身或全身、中性背景，作为该角色在全剧所有镜头中的外貌基准，需可复用。"
+        )
+
+    def _scene_prompt(self, loc: dict, story: dict) -> str:
+        return (
+            f"场景参考图。地点：{loc.get('name', '')}。描述：{loc.get('description', '')}。"
+            f"整体画风：{story.get('style', '')}。要求：空镜无人物，作为该场景的视觉基准。"
+        )
 
     def _reference_prompt(self, story: dict) -> str:
         return (
