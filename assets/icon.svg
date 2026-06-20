@@ -1,0 +1,76 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1024" y2="1024" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFA24D"/>
+      <stop offset="0.55" stop-color="#FF7A1A"/>
+      <stop offset="1" stop-color="#F1590A"/>
+    </linearGradient>
+    <linearGradient id="play" x1="430" y1="360" x2="560" y2="664" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#FFE7CE"/>
+    </linearGradient>
+    <radialGradient id="sheen" cx="0.3" cy="0.22" r="0.9">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.45"/>
+      <stop offset="0.5" stop-color="#FFFFFF" stop-opacity="0.06"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="14" stdDeviation="22" flood-color="#7A2E00" flood-opacity="0.28"/>
+    </filter>
+    <clipPath id="sq">
+      <rect x="64" y="64" width="896" height="896" rx="232" ry="232"/>
+    </clipPath>
+  </defs>
+
+  <!-- 圆角方块底（橙色渐变 + 玻璃高光） -->
+  <rect x="64" y="64" width="896" height="896" rx="232" ry="232" fill="url(#bg)"/>
+  <g clip-path="url(#sq)">
+    <!-- 科技感电路线 -->
+    <g stroke="#FFFFFF" stroke-opacity="0.14" stroke-width="3" fill="none">
+      <path d="M120 300 H360 M120 300 V520 M360 300 V200"/>
+      <path d="M904 720 H700 M904 720 V520 M700 720 V840"/>
+      <path d="M150 760 H300 V640"/>
+      <path d="M874 280 H760 V400"/>
+    </g>
+    <g fill="#FFFFFF" fill-opacity="0.22">
+      <circle cx="120" cy="300" r="9"/><circle cx="360" cy="200" r="9"/>
+      <circle cx="300" cy="640" r="9"/><circle cx="904" cy="720" r="9"/>
+      <circle cx="760" cy="400" r="9"/>
+    </g>
+    <!-- 顶部玻璃光泽 -->
+    <rect x="64" y="64" width="896" height="896" fill="url(#sheen)"/>
+  </g>
+
+  <!-- 神经网络：节点连线汇入播放三角（AI 生成视频） -->
+  <g stroke="url(#play)" stroke-width="7" stroke-opacity="0.9" fill="none" stroke-linecap="round">
+    <path d="M306 392 L470 470"/>
+    <path d="M286 512 L452 512"/>
+    <path d="M306 632 L470 554"/>
+    <path d="M306 392 L286 512 L306 632"/>
+  </g>
+  <g fill="#FFFFFF">
+    <circle cx="306" cy="392" r="26" filter="url(#soft)"/>
+    <circle cx="286" cy="512" r="30" filter="url(#soft)"/>
+    <circle cx="306" cy="632" r="26" filter="url(#soft)"/>
+    <circle cx="306" cy="392" r="10" fill="#FF7A1A"/>
+    <circle cx="286" cy="512" r="12" fill="#FF7A1A"/>
+    <circle cx="306" cy="632" r="10" fill="#FF7A1A"/>
+  </g>
+
+  <!-- 播放三角（视频，主视觉） -->
+  <path d="M470 396 L470 628 L676 512 Z" fill="url(#play)"
+        stroke="url(#play)" stroke-width="46" stroke-linejoin="round" filter="url(#soft)"/>
+
+  <!-- AI 火花 -->
+  <g transform="translate(706,360)">
+    <circle r="60" fill="url(#glow)"/>
+    <path d="M0 -42 C7 -12 12 -7 42 0 C12 7 7 12 0 42 C-7 12 -12 7 -42 0 C-12 -7 -7 -12 0 -42 Z" fill="#FFFFFF"/>
+  </g>
+  <g transform="translate(648,250)" fill="#FFFFFF" fill-opacity="0.9">
+    <path d="M0 -18 C3 -5 5 -3 18 0 C5 3 3 5 0 18 C-3 5 -5 3 -18 0 C-5 -3 -3 -5 0 -18 Z"/>
+  </g>
+</svg>

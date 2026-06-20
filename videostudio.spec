@@ -48,5 +48,5 @@ exe = EXE(
     upx=False,            # 关闭 UPX，避免杀软误报
     runtime_tmpdir=None,
     console=False,        # 无控制台窗口；排查闪退时可临时改为 True 重新打包
-    icon=None,
+    icon='assets/icon.ico',
 )
