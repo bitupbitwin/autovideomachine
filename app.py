@@ -356,38 +356,66 @@ class Api:
             return {"ok": False, "error": friendly_error(exc)}
 
 
+def _fatal(message: str) -> None:
+    """启动失败时：写日志到程序目录，并尽量弹窗提示（Windows），避免静默退出。"""
+    try:
+        (engine.APP_DIR / "startup_error.log").write_text(message, encoding="utf-8")
+    except Exception:
+        pass
+    try:
+        import ctypes
+
+        ctypes.windll.user32.MessageBoxW(0, message[:1800], "自动视频脚本工作台 · 启动失败", 0x10)
+    except Exception:
+        print(message, file=sys.stderr)
+
+
 def main():
+    import traceback
+
     try:
         import webview
     except ImportError:
-        print(
+        _fatal(
             "缺少依赖 pywebview。请先安装：\n\n    pip install pywebview\n\n"
-            "（Windows 自带 WebView2；macOS 自带 WebKit；Linux 需安装 webkit2gtk）",
-            file=sys.stderr,
+            "（Windows 需 WebView2 运行时；macOS 自带 WebKit；Linux 需 webkit2gtk）"
         )
-        sys.exit(1)
+        return
 
-    api = Api()
-    window = webview.create_window(
-        "自动视频脚本工作台",
-        url=str(WEB_INDEX),
-        js_api=api,
-        width=1240,
-        height=820,
-        min_size=(980, 680),
-        background_color="#FFF3E8",
-    )
-    api.window = window
-
-    icon = _resource_dir() / "assets" / "icon.png"
     try:
-        if icon.exists():
-            webview.start(icon=str(icon))
-        else:
+        if not WEB_INDEX.exists():
+            raise RuntimeError(
+                f"找不到界面文件：{WEB_INDEX}\n\n"
+                "打包时 web 目录可能未被包含。请确认用 videostudio.spec 打包。"
+            )
+
+        api = Api()
+        window = webview.create_window(
+            "自动视频脚本工作台",
+            url=str(WEB_INDEX),
+            js_api=api,
+            width=1240,
+            height=820,
+            min_size=(980, 680),
+            background_color="#FFF3E8",
+        )
+        api.window = window
+
+        icon = _resource_dir() / "assets" / "icon.png"
+        try:
+            if icon.exists():
+                webview.start(icon=str(icon))
+            else:
+                webview.start()
+        except Exception:
+            # 图标参数在个别后端可能不被支持：去掉图标重试一次
             webview.start()
-    except TypeError:
-        # 旧版 pywebview 不支持 icon 参数
-        webview.start()
+    except Exception:
+        _fatal(
+            "程序启动失败，错误信息如下（可截图发给开发者）：\n\n"
+            + traceback.format_exc()
+            + "\n\n常见原因：缺少 WebView2 运行时（去微软官网搜 “WebView2 Runtime” 安装一次）。"
+        )
 
 
 if __name__ == "__main__":
