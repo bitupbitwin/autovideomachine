@@ -378,7 +378,16 @@ def main():
         background_color="#FFF3E8",
     )
     api.window = window
-    webview.start()
+
+    icon = _resource_dir() / "assets" / "icon.png"
+    try:
+        if icon.exists():
+            webview.start(icon=str(icon))
+        else:
+            webview.start()
+    except TypeError:
+        # 旧版 pywebview 不支持 icon 参数
+        webview.start()
 
 
 if __name__ == "__main__":

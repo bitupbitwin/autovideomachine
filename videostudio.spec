@@ -3,7 +3,8 @@
 # 用法：pyinstaller --noconfirm --clean videostudio.spec
 from PyInstaller.utils.hooks import collect_all
 
-datas = [('web', 'web'), ('config.example.json', '.')]
+datas = [('web', 'web'), ('config.example.json', '.'),
+         ('assets/icon.png', 'assets'), ('assets/icon.ico', 'assets')]
 binaries = []
 hiddenimports = []
 
