@@ -21,6 +21,9 @@ UI_CONFIG_PATH = APP_DIR / "ui_config.json"
 
 THEMES = ("orange", "red", "blue", "green", "purple", "pink", "yellow")
 
+# Gemini TTS 内置音色池，用于给角色自动分配固定音色（同一角色全剧同一把声音）
+VOICE_POOL = ("Kore", "Puck", "Zephyr", "Charon", "Fenrir", "Leda")
+
 
 def now_id() -> str:
     return datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -350,6 +353,10 @@ class StoryEngine:
                 })
             elif isinstance(c, str) and c.strip():
                 cast.append({"name": c.strip()[:24], "appearance": "", "persona": "", "voice": ""})
+        # 给没有音色的角色按池子分配固定音色
+        for i, c in enumerate(cast):
+            if not c.get("voice"):
+                c["voice"] = VOICE_POOL[i % len(VOICE_POOL)]
         story["cast"] = cast
         # 场景表
         locations = []

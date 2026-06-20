@@ -134,13 +134,13 @@ class GeminiTTSClient:
         self.model = model
         self.voice = voice
 
-    def synthesize(self, text: str, timeout: int = 120) -> bytes:
+    def synthesize(self, text: str, voice: str | None = None, timeout: int = 120) -> bytes:
         payload = {
             "contents": [{"parts": [{"text": text}]}],
             "generationConfig": {
                 "responseModalities": ["AUDIO"],
                 "speechConfig": {
-                    "voiceConfig": {"prebuiltVoiceConfig": {"voiceName": self.voice}}
+                    "voiceConfig": {"prebuiltVoiceConfig": {"voiceName": voice or self.voice}}
                 },
             },
         }

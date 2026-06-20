@@ -7,6 +7,7 @@
 注：本模块依赖外部 API Key（xAI / Gemini）与系统 ffmpeg；真实产出需在配置 Key 后运行。
 """
 
+import math
 import shutil
 import subprocess
 from pathlib import Path
@@ -94,17 +95,29 @@ class VideoProducer:
                 generic_ref = self._ensure_reference(story, out_dir)
 
         prefix = self._consistency_prefix(story)
+        voice_map = {c.get("name", ""): c.get("voice", "") for c in story.get("cast", []) if c.get("name")}
+        default_voice = self.cfg.get("gemini_voice", "Kore")
         normalized, segments = [], []
         prev_frame, prev_speaker, prev_location = None, None, None
 
         for i, shot in enumerate(item.shots, 1):
             n = len(item.shots)
-            duration = max(1, min(GROK_MAX_DURATION, int(shot.get("duration", 6))))
             speaker = shot.get("speaker", "")
             location = shot.get("location", "")
+            voiceover = (shot.get("voiceover") or "").strip()
 
-            self.progress(f"镜头 {i}/{n}：生成视频…")
-            prompt = f"{prefix} 本镜画面：{shot.get('visual_prompt', '')}"
+            # 先配音：用该角色固定音色，并用音频实际时长决定该镜时长（对话节奏自然）
+            audio_path = None
+            if voiceover:
+                self.progress(f"镜头 {i}/{n}：配音（{speaker or '旁白'}）…")
+                voice = voice_map.get(speaker) or default_voice
+                wav = self.tts.synthesize(voiceover, voice=voice)
+                audio_path = work / f"shot_{i:03d}.wav"
+                audio_path.write_bytes(wav)
+                audio_dur = self._media_duration(audio_path)
+                duration = max(2, min(GROK_MAX_DURATION, int(math.ceil(audio_dur)) if audio_dur else 4))
+            else:
+                duration = max(1, min(GROK_MAX_DURATION, int(shot.get("duration", 6) or 6)))
 
             anchor = None
             if self.consistency == "strong":
@@ -116,25 +129,19 @@ class VideoProducer:
                     anchor = prev_frame  # 同一人同场景内：用上一镜尾帧做连续衔接
             image_bytes = anchor.read_bytes() if (anchor and anchor.exists()) else None
 
+            self.progress(f"镜头 {i}/{n}：生成视频…")
+            prompt = f"{prefix} 本镜画面：{shot.get('visual_prompt', '')}"
             clip_bytes = self.grok.generate_video(
                 prompt, image_bytes, duration, self.aspect, self.resolution
             )
             raw_clip = work / f"shot_{i:03d}_raw.mp4"
             raw_clip.write_bytes(clip_bytes)
 
-            audio_path = None
-            voiceover = (shot.get("voiceover") or "").strip()
-            if voiceover:
-                self.progress(f"镜头 {i}/{n}：配音…")
-                wav = self.tts.synthesize(voiceover)
-                audio_path = work / f"shot_{i:03d}.wav"
-                audio_path.write_bytes(wav)
-
             self.progress(f"镜头 {i}/{n}：规整音画…")
             norm = work / f"shot_{i:03d}.mp4"
             self._normalize_clip(raw_clip, audio_path, duration, norm)
             normalized.append(norm)
-            segments.append((duration, voiceover))
+            segments.append((duration, speaker, voiceover))
 
             if self.consistency == "strong":
                 frame = work / f"frame_{i:03d}.png"
@@ -289,12 +296,23 @@ class VideoProducer:
                 "-c:v", "copy", "-c:a", "copy", "-c:s", "mov_text", str(out),
             ])
 
-    def _build_srt(self, segments: list[tuple[int, str]], path: Path) -> None:
+    def _media_duration(self, path: Path) -> float:
+        proc = subprocess.run(
+            ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(path)],
+            capture_output=True, text=True,
+        )
+        try:
+            return float(proc.stdout.strip())
+        except (ValueError, AttributeError):
+            return 0.0
+
+    def _build_srt(self, segments: list[tuple], path: Path) -> None:
         lines, t = [], 0.0
         idx = 1
-        for duration, text in segments:
+        for duration, speaker, text in segments:
             if text:
-                lines.append(f"{idx}\n{_srt_time(t)} --> {_srt_time(t + duration)}\n{text}\n")
+                label = f"{speaker}：{text}" if speaker and speaker != "旁白" else text
+                lines.append(f"{idx}\n{_srt_time(t)} --> {_srt_time(t + duration)}\n{label}\n")
                 idx += 1
             t += duration
         path.write_text("\n".join(lines), encoding="utf-8")
