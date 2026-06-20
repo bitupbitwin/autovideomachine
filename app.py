@@ -26,7 +26,16 @@ from engine import (
 )
 
 APP_DIR = Path(__file__).resolve().parent
-WEB_INDEX = APP_DIR / "web" / "index.html"
+
+
+def _resource_dir() -> Path:
+    """只读资源目录（web 界面）：打包(冻结)后用 PyInstaller 解包目录，开发时用源码目录。"""
+    if getattr(sys, "frozen", False):
+        return Path(getattr(sys, "_MEIPASS", Path(sys.executable).resolve().parent))
+    return APP_DIR
+
+
+WEB_INDEX = _resource_dir() / "web" / "index.html"
 
 
 def friendly_error(exc: Exception) -> str:

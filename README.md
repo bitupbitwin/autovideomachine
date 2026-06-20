@@ -79,6 +79,15 @@ outputs/
 }
 ```
 
+## 打包成免安装 exe
+
+在目标系统上运行打包脚本即可生成可双击运行的程序（Windows 的 exe 须在 Windows 上打包）：
+
+- Windows：双击 `build_windows.bat` → 产物 `dist\AutoVideoStudio.exe`
+- macOS/Linux：`bash build_macos.sh`
+
+详细的打包、安装、API Key 配置与使用流程见 **`使用说明.md`**。
+
 ## 项目结构
 
 ```text

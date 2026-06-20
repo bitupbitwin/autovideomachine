@@ -1,0 +1,8 @@
+# 运行依赖
+pywebview
+
+# Windows 上 WebView2 后端通常需要
+pythonnet; sys_platform == "win32"
+
+# 仅打包 exe 时需要（开发运行可不装）
+# pyinstaller

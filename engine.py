@@ -6,6 +6,7 @@
 import json
 import math
 import re
+import sys
 import urllib.error
 import urllib.request
 from dataclasses import asdict, dataclass
@@ -14,7 +15,14 @@ from html.parser import HTMLParser
 from pathlib import Path
 
 
-APP_DIR = Path(__file__).resolve().parent
+def _base_dir() -> Path:
+    """可写数据目录（输出/配置）：打包(冻结)后用 exe 所在目录，开发时用源码目录。"""
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent
+    return Path(__file__).resolve().parent
+
+
+APP_DIR = _base_dir()
 OUTPUT_DIR = APP_DIR / "outputs"
 CONFIG_PATH = APP_DIR / "config.json"
 UI_CONFIG_PATH = APP_DIR / "ui_config.json"

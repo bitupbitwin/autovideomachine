@@ -9,8 +9,10 @@
 
 import json
 import math
+import os
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 from engine import safe_name
@@ -19,8 +21,20 @@ from providers import GeminiTTSClient, GrokClient
 GROK_MAX_DURATION = 10  # Grok Imagine 单段约 10 秒上限
 
 
+def _tool(name: str) -> str:
+    """定位 ffmpeg/ffprobe：优先程序(exe)同目录，其次系统 PATH。"""
+    exe = name + (".exe" if os.name == "nt" else "")
+    here = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent
+    local = here / exe
+    if local.exists():
+        return str(local)
+    return shutil.which(name) or name
+
+
 def have_ffmpeg() -> bool:
-    return bool(shutil.which("ffmpeg") and shutil.which("ffprobe"))
+    def ok(name):
+        return Path(_tool(name)).exists() or shutil.which(name) is not None
+    return ok("ffmpeg") and ok("ffprobe")
 
 
 def _cjk_fontfile() -> str | None:
@@ -258,7 +272,7 @@ class VideoProducer:
 
     # ---------- ffmpeg 封装 ----------
     def _run(self, args: list[str]) -> None:
-        proc = subprocess.run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", *args],
+        proc = subprocess.run([_tool("ffmpeg"), "-y", "-hide_banner", "-loglevel", "error", *args],
                               capture_output=True, text=True)
         if proc.returncode != 0:
             raise RuntimeError(f"ffmpeg 失败：{(proc.stderr or '').strip()[:400]}")
@@ -324,7 +338,7 @@ class VideoProducer:
 
     def _media_duration(self, path: Path) -> float:
         proc = subprocess.run(
-            ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(path)],
+            [_tool("ffprobe"), "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(path)],
             capture_output=True, text=True,
         )
         try:
