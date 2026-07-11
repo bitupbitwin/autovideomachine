@@ -250,6 +250,11 @@ textarea::placeholder { color: var(--ink-soft); opacity: 0.6; }
 .shot-card { background: rgba(255,255,255,0.5); border: 1px solid var(--glass-border); border-radius: 12px; padding: 10px 13px; margin: 8px 0; }
 .shot-card .shot-h, .scene .shot-h { font-size: 12px; font-weight: 700; color: var(--accent-deep); margin-bottom: 4px; }
 .scene { background: rgba(255,255,255,0.5); border: 1px solid var(--glass-border); border-radius: 12px; padding: 10px 13px; margin: 8px 0; }
+.scene .shot-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.copy-scene-btn { flex: none; border: 1px solid var(--glass-border); background: rgba(255,255,255,0.85); color: var(--accent-deep);
+  border-radius: 8px; padding: 3px 12px; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer;
+  transition: border 0.15s ease, box-shadow 0.15s ease; }
+.copy-scene-btn:hover { border-color: var(--accent-2); box-shadow: 0 0 0 3px var(--ring); }
 .beat { padding: 5px 0; border-bottom: 1px dashed rgba(0,0,0,0.06); }
 .beat:last-child { border-bottom: none; }
 .beat .spk { display: inline-block; font-weight: 700; color: var(--accent-deep); margin-right: 6px; }
@@ -294,10 +299,11 @@ textarea::placeholder { color: var(--ink-soft); opacity: 0.6; }
 #scriptEditor .ed-scene { border: 1px solid var(--glass-border); border-radius: 12px; padding: 10px; margin: 8px 0; background: rgba(255,255,255,0.4); }
 #scriptEditor input, #scriptEditor textarea { border: 1px solid var(--glass-border); background: rgba(255,255,255,0.85); border-radius: 8px; padding: 7px 10px; font: inherit; font-size: 13px; color: var(--ink); outline: none; }
 #scriptEditor .ed-loc { width: 100%; margin-bottom: 8px; font-weight: 600; }
-#scriptEditor .ed-beat { display: grid; grid-template-columns: 90px minmax(180px, 1fr) 130px 64px; gap: 6px; margin: 8px 0; }
+/* 台词与动作表情各占一半（1:1），均为单行输入 */
+#scriptEditor .ed-beat { display: grid; grid-template-columns: 90px 1fr 1fr; gap: 6px; margin: 8px 0; }
 #scriptEditor .ed-spk { flex: 0 0 90px; }
 #scriptEditor .ed-line { flex: 1; }
-#scriptEditor .ed-act { flex: 0 0 130px; }
+#scriptEditor .ed-act { flex: 1; }
 #scriptEditor .ed-dur { width: 64px; }
 #scriptEditor .ed-shot { grid-column: 1 / -1; width: 100%; min-height: 58px; resize: vertical; }
 #scriptEditor input:focus, #scriptEditor textarea:focus { border-color: var(--accent-2); box-shadow: 0 0 0 3px var(--ring); }

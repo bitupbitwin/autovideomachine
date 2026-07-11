@@ -3,11 +3,26 @@
 const $ = (id) => document.getElementById(id);
 const state = { mode: "text", scripts: [], selected: null, busy: false };
 
-/* 等待 pywebview 桥接就绪 */
-function apiReady() {
-  return new Promise((resolve) => {
-    if (window.pywebview && window.pywebview.api) return resolve();
-    window.addEventListener("pywebviewready", () => resolve(), { once: true });
+/* 等待 pywebview 桥接就绪。
+   注意：window.pywebview.api 先被注入为空对象、方法列表随后才填充，
+   所以必须确认具体方法存在才算就绪；轮询 + 事件双保险，超时则报错。 */
+function apiReady(timeoutMs = 30000) {
+  const ok = () =>
+    window.pywebview && window.pywebview.api &&
+    typeof window.pywebview.api.get_status === "function";
+  return new Promise((resolve, reject) => {
+    if (ok()) return resolve();
+    const started = Date.now();
+    const timer = setInterval(() => {
+      if (ok()) { clearInterval(timer); resolve(); }
+      else if (Date.now() - started > timeoutMs) {
+        clearInterval(timer);
+        reject(new Error("pywebview 桥接超时"));
+      }
+    }, 250);
+    window.addEventListener("pywebviewready", () => {
+      if (ok()) { clearInterval(timer); resolve(); }
+    }, { once: true });
   });
 }
 
@@ -334,7 +349,8 @@ function selectScript(index) {
         (b.action ? `<span class="act">（${esc(b.action)}）</span>` : "") +
         `<div class="shotp">画面：${esc(b.shot_prompt || "")} · ${esc(String(b.duration || ""))}s</div></div>`
       ).join("");
-      return `<div class="scene"><div class="shot-h">${head}</div>${beats}</div>`;
+      return `<div class="scene"><div class="shot-h"><span>${head}</span>` +
+        `<button class="copy-scene-btn" data-si="${si}" title="复制本场景的旁白/台词/动作/画面提示词">复制</button></div>${beats}</div>`;
     }).join("");
   } else {
     body = s.shots.map((sh, i) =>
@@ -345,7 +361,49 @@ function selectScript(index) {
   const el = $("scriptDetail");
   el.className = "result-body";
   el.innerHTML = `<h3>${esc(s.title)}</h3><b>摘要：</b>${esc(s.summary)}<h3>剧本</h3>${body}`;
+  el.querySelectorAll(".copy-scene-btn").forEach((btn) => {
+    btn.onclick = () => copyScenePrompt(s, Number(btn.dataset.si));
+  });
   if (!state.busy) lockSteps(false);
+}
+
+/* 把单个场景拼成可直接投喂视频大模型的提示词并复制 */
+function sceneToPrompt(s, sc, si) {
+  const lines = [`《${s.title || ""}》场景 ${si + 1}` + (sc.location ? `｜${sc.location}` : "")];
+  (sc.beats || []).forEach((b) => {
+    let t = `${b.speaker || "旁白"}：${b.line || ""}`;
+    if (b.action) t += `（${b.action}）`;
+    lines.push(t);
+    if (b.shot_prompt) {
+      lines.push(`画面：${b.shot_prompt}` + (b.duration ? ` · ${b.duration}s` : ""));
+    }
+  });
+  return lines.join("\n");
+}
+
+async function copyScenePrompt(s, si) {
+  const sc = (s.scenes || [])[si];
+  if (!sc) return;
+  const ok = await copyText(sceneToPrompt(s, sc, si));
+  toast(ok ? `已复制场景 ${si + 1} 提示词 ✓` : "复制失败，请手动选择文本复制", ok ? "ok" : "err");
+}
+
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch (e) {
+    /* file:// 等非安全上下文下 clipboard API 不可用，退回 execCommand */
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.cssText = "position:fixed;top:0;left:0;opacity:0;";
+    document.body.appendChild(ta);
+    ta.select();
+    let ok = false;
+    try { ok = document.execCommand("copy"); } catch (_) {}
+    ta.remove();
+    return ok;
+  }
 }
 
 /* ---------- 步骤 3 ---------- */
@@ -543,9 +601,20 @@ function bind() {
   $("settingsModal").addEventListener("click", (e) => { if (e.target.id === "settingsModal") closeSettings(); });
 }
 
-apiReady().then(async () => {
+async function boot() {
+  /* 界面绑定不依赖桥接，先做，保证按钮/主题等始终可交互 */
   bind();
   setMode("text");
   updateCharCount();
-  await refreshStatus();
-});
+  try {
+    await apiReady();
+    await refreshStatus();
+  } catch (e) {
+    /* 桥接失败或 get_status 出错：明确告知，而不是永远停在「检测中…」 */
+    $("statusPill").className = "pill offline";
+    $("statusText").textContent = "连接后台失败";
+    toast("界面与程序后台的桥接未就绪，请关闭后重新打开；若反复出现，请重装 WebView2 运行时", "err", 9000);
+  }
+}
+
+boot();

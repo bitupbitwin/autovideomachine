@@ -7,3 +7,5 @@ outputs/*
 build/
 dist/
 *.manifest
+*.log
+log.txt

@@ -60,7 +60,10 @@ class Api:
         self.story = None
         self.source_text = ""
         self.scripts: list[ScriptItem] = []
-        self.window = None
+        # 用下划线前缀：pywebview 注入桥接时会递归枚举 js_api 的公开属性，
+        # 若把 Window 对象挂成公开属性，会爬进 Window 的 dom/宽高等 getter
+        # 导致阻塞，_createApi 永远不执行，前端卡死在「检测中…」
+        self._window = None
 
     # ---- 配置 / 状态 ----
     def get_status(self) -> dict:
@@ -84,7 +87,7 @@ class Api:
 
     def _progress(self, msg: str) -> None:
         try:
-            self.window.evaluate_js(
+            self._window.evaluate_js(
                 "window.onProduceProgress && window.onProduceProgress(%s)" % json.dumps(msg)
             )
         except Exception:
@@ -113,7 +116,7 @@ class Api:
         try:
             import webview
 
-            result = self.window.create_file_dialog(
+            result = self._window.create_file_dialog(
                 webview.OPEN_DIALOG,
                 allow_multiple=False,
                 file_types=("文本文件 (*.txt)", "所有文件 (*.*)"),
@@ -495,9 +498,14 @@ def main():
             min_size=(980, 680),
             background_color="#FFF3E8",
         )
-        api.window = window
+        api._window = window
 
-        icon = _resource_dir() / "assets" / "icon.png"
+        # Windows(WinForms 后端)的 System.Drawing.Icon 只接受 .ico，传 PNG 会在
+        # .NET 线程抛异常直接崩溃，Python 的 try/except 兜不住
+        if sys.platform == "win32":
+            icon = _resource_dir() / "assets" / "icon.ico"
+        else:
+            icon = _resource_dir() / "assets" / "icon.png"
         try:
             if icon.exists():
                 webview.start(icon=str(icon))
